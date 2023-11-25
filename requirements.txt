@@ -1,0 +1,8 @@
+requests
+pandas
+python-dotenv
+pymssql
+xlrd
+selenium
+tqdm
+openpyxl
