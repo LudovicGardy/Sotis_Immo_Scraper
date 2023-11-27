@@ -1,13 +1,12 @@
 import json
 import sys
-from dotenv import dotenv_values
 
 sys.path.append('../')
-from modules.config import data_URL, user_config, scraper_config
+from modules.config import data_URL, user_config, scraper_config, load_configurations
 from modules.scraper import Scraper
 
 # Appending the parent directory to the system path for importing local modules
-env_variables = dotenv_values('.env')
+env_variables = load_configurations()
 
 # Extraire les paramètres
 date_to_reach = user_config().get('date_to_reach')

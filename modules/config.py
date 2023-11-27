@@ -1,9 +1,22 @@
-from dotenv import dotenv_values
+from dotenv import load_dotenv, find_dotenv
 import os
 import sys
 
-sys.path.append('../')
-env_variables = dotenv_values('.env')
+def load_configurations():
+    """
+    Charge uniquement les variables du fichier .env si celui-ci est présent.
+    Si le fichier .env n'existe pas, charge toutes les variables d'environnement du système.
+    """
+    dotenv_path = find_dotenv('.env')
+
+    if dotenv_path:
+        # Le fichier .env existe, charger uniquement ses variables
+        load_dotenv(dotenv_path)
+        # Retourne les variables chargées depuis le .env
+        return {key: os.environ[key] for key in os.environ if key in open(dotenv_path).read()}
+    else:
+        # Le fichier .env n'existe pas, retourne toutes les variables d'environnement du système
+        return dict(os.environ)
 
 ### CONFIGURATION ###
 def user_config():
@@ -31,6 +44,8 @@ def data_URL():
     '''
     Set the URLs to the data sources.
     '''
+
+    env_variables = load_configurations()
 
     data_dict = {
         'source': '{source_url}/{departement}/{local_types}?page={page_num}&mode=liste&tri=publication-desc'.format(source_url=env_variables["SOURCE_URL"], local_types=env_variables["LOCAL_TYPES"], departement="departement", page_num="page_num"),      
