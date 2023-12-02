@@ -22,7 +22,7 @@ def load_configurations():
 def user_config():
 
     user_config_dict = {
-        "date_to_reach": "2023-11-23", # "yyyy-mm-dd"
+        "date_to_reach": "2023-11-28", # "yyyy-mm-dd"
         "start_department": 1 # from 1 to 95
     }
 

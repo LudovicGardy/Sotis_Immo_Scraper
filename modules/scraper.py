@@ -60,9 +60,7 @@ class Scraper(Transformer, Sender):
         self.break_loop = False
 
         try:
-            self.connect_to_db()
             self.create_SQL_table()
-            self.disconnect_from_db()
         except Exception as e:
             print('Did not create table (might already exist). See error log:\n')
             print(e)
@@ -89,22 +87,25 @@ class Scraper(Transformer, Sender):
             os.makedirs('dpt')
 
         for dep_num in tqdm.tqdm(departments):
+            if int(dep_num) == 3:
+                break
+
             print(f'\nProcessing department {dep_num}...')
             print('----------------------------------')
             self.dep_num = dep_num
             self.browse_current_department_pages(path_to_chromedriver, url, html_element_of_interest, nextpage_button_class_name, max_pages, verbose)
-    
+
             self.properties_info_df = pd.DataFrame(self.properties_list_of_dicts)
+
             self.get_longitudes_latitudes()
-            self.dataframes_list.append(self.properties_info_df)
+            # self.dataframes_list.append(self.properties_info_df)
 
             # self.properties_info_df.to_csv(f'dpt/{dep}.csv', sep="`", index=False, encoding='utf-8')
             if self.write_xls:
                 self.properties_info_df.to_excel(f'dpt/{dep_num}.xlsx', index=False)
             else:
-                self.connect_to_db()
-                self.send_to_db(self.properties_list_of_dicts)
-                self.disconnect_from_db()
+                # self.send_to_db(self.properties_info_df)
+                self.send_to_db(self.merged_table)
                 print(f'|-----| Department {dep_num} sent to db.')
                 # break
 
@@ -113,8 +114,6 @@ class Scraper(Transformer, Sender):
 
             time.sleep(2)
             #count_rows += 1
-
-        self.disconnect_from_db()
 
     def browse_current_department_pages(self, path_to_chromedriver, url, html_element_of_interest, nextpage_button_class_name, max_pages, verbose):
         '''
@@ -254,7 +253,7 @@ class Scraper(Transformer, Sender):
             match = re.search(r'(\w+) (\d+) pièces (\d+) m²', title_text)
             # if match:
             try:
-                prop_info['type_local'] = match.group(1)
+                prop_info['type_local'] = str(match.group(1))
             except:
                 prop_info['type_local'] = None
             try:
@@ -271,25 +270,25 @@ class Scraper(Transformer, Sender):
             address_match = re.search(r'(\d{5})\s+(.+?)(?:\s+\((.+)\))?$', address_text)
             # if address_match:
             try:
-                prop_info['code_postal'] = address_match.group(1)
+                prop_info['code_postal'] = str(address_match.group(1))
             except:
                 prop_info['code_postal'] = None
             try:
-                prop_info['code_departement'] = self.dep_num
+                prop_info['code_departement'] = str(self.dep_num)
             except:
                 prop_info['code_departement'] = None
             try:
-                prop_info['ville'] = address_match.group(2)
+                prop_info['ville'] = str(address_match.group(2))
             except:
                 prop_info['ville'] = None
             try:
-                prop_info['quartier'] = address_match.group(3) if address_match.group(3) else None
+                prop_info['quartier'] = str(address_match.group(3)) if address_match.group(3) else None
             except:
                 prop_info['quartier'] = None
             
             # Prix au mètre carré
             try:
-                prop_info['valeur_sqm'] = price_per_sqm_element.text.replace('€/m²', '').replace('\xa0', '').replace(' ', '')
+                prop_info['valeur_sqm'] = str(price_per_sqm_element.text.replace('€/m²', '').replace('\xa0', '').replace(' ', ''))
             except:
                 prop_info['valeur_sqm'] = None
             # prop_info['prix_m2'] = int(price_per_sqm_text)
@@ -304,11 +303,11 @@ class Scraper(Transformer, Sender):
 
             # Dates
             try:
-                prop_info['date_publication'] = publication_date_element.get_attribute('title').replace('1er', '1')
+                prop_info['date_publication'] = str(publication_date_element.get_attribute('title').replace('1er', '1'))
             except:
                 prop_info['date_publication'] = None
             try:
-                prop_info['date_modification'] = modification_date_element.get_attribute('title').replace('1er', '1')
+                prop_info['date_modification'] = str(modification_date_element.get_attribute('title').replace('1er', '1'))
             except:
                 prop_info['date_modification'] = None
 
@@ -318,7 +317,7 @@ class Scraper(Transformer, Sender):
                 mm = calendar_match[prop_info['date_publication'].split(' ')[1].lower()]
                 dd = prop_info['date_publication'].split(' ')[0]
                 dd = f"{int(dd):02d}"
-                prop_info['date_publication_yyyymmdd'] = f"{yyyy}-{mm}-{dd}"
+                prop_info['date_publication_yyyymmdd'] = str(f"{yyyy}-{mm}-{dd}")
             except:
                 prop_info['date_publication_yyyymmdd'] = None
             try:
@@ -326,7 +325,7 @@ class Scraper(Transformer, Sender):
                 mm = calendar_match[prop_info['date_modification'].split(' ')[1].lower()]
                 dd = prop_info['date_modification'].split(' ')[0]
                 dd = f"{int(dd):02d}"
-                prop_info['date_modification_yyyymmdd'] = f"{yyyy}-{mm}-{dd}"
+                prop_info['date_modification_yyyymmdd'] = str(f"{yyyy}-{mm}-{dd}")
             except:
                 prop_info['date_modification_yyyymmdd'] = None
 
@@ -343,18 +342,18 @@ class Scraper(Transformer, Sender):
 
             # Référence
             try:
-                prop_info['reference'] = reference_element.text.replace('Référence : ', '').strip()
+                prop_info['reference'] = str(reference_element.text.replace('Référence : ', '').strip())
             except:
                 prop_info['reference'] = None
             
             # Description
             try:
-                prop_info['description'] = description_element.text.replace('<br>', '\n').strip()
+                prop_info['description'] = str(description_element.text.replace('<br>', '\n').strip())
             except:
                 prop_info['description'] = None
             
             try: 
-                prop_info['agence'] = data_id
+                prop_info['agence'] = str(data_id)
             except:
                 prop_info['agence'] = None
 

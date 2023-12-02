@@ -22,9 +22,12 @@ restaurants_simulated_france.parquet
 
 # Other
 _archives/
+modules_azure/
 notebooks/
 env/
 pipeline.md
 notes.md
 drivers/
+bigquery_credentials_procedure.md
+sotisai-immo-v2-469d03596896.json
 #.env # Let's keep it for this project

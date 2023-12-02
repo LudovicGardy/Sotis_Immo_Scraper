@@ -1,164 +1,85 @@
-# Standard libraries for system operations and logging
-import sys
+# Importations nécessaires
 import logging
 import os
-# Third-party libraries for database interaction, data manipulation, and progress visualization
-import pymssql
 import pandas as pd
-import numpy as np
-from datetime import datetime
-from tqdm.notebook import tqdm
+import json
+from google.cloud import bigquery
+from google.oauth2 import service_account
+
 
 class Sender:
-    """
-    Class Sender is responsible for establishing a connection to a SQL database,
-    creating necessary tables, and sending data to the database.
-    """
-
     def __init__(self, env_variables):
-        # Initialize the Sender object and fetch credentials from the config
         print('Init sender...')
-        self.server = env_variables.get('AZURE_SERVER')
-        self.database = env_variables.get('AZURE_DATABASE')
-        self.uid = env_variables.get('AZURE_UID')
-        self.pwd = env_variables.get('AZURE_PWD')
-        self.table_name = env_variables.get('AZURE_TABLE')
+        # Configuration pour BigQuery
+        self.project_id = env_variables.get('BIGQUERY_PROJECT_ID')
+        self.dataset_id = env_variables.get('BIGQUERY_DATASET_ID')
+        self.table_id = env_variables.get('BIGQUERY_TABLE')
 
-    def create_SQL_query(self):
-        """
-        Constructs SQL queries to create a new table and indexes if they don't exist.
-        Ensures the order of declarations in the query corresponds to the columns in the dataframe.
-        """
-        create_table_query = f"""
-        IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = N'{self.table_name}')
-        BEGIN
-            CREATE TABLE {self.table_name} (
-                type_local NVARCHAR(50),
-                nombre_pieces INT,
-                surface INT,
-                code_postal NVARCHAR(10),
-                code_departement NVARCHAR(5),
-                ville NVARCHAR(100),
-                quartier NVARCHAR(100),
-                valeur_sqm NVARCHAR(50),
-                valeur_fonciere FLOAT,
-                date_publication NVARCHAR(50),
-                date_modification NVARCHAR(50),
-                date_publication_yyyymmdd NVARCHAR(50),
-                date_modification_yyyymmdd NVARCHAR(50),
-                reference NVARCHAR(50),
-                description NVARCHAR(MAX),
-                agence NVARCHAR(100),
-                latitude FLOAT,
-                longitude FLOAT
-            )
-        END
-        """
-        index_queries = f"""
-        IF EXISTS (SELECT * FROM sys.tables WHERE name = N'{self.table_name}')
-        BEGIN
-            CREATE INDEX idx_code_postal ON {self.table_name} (code_postal);
-            CREATE INDEX idx_code_departement ON {self.table_name} (code_departement);
-            CREATE INDEX idx_type_local ON {self.table_name} (type_local);
-            CREATE INDEX idx_valeur_fonciere ON {self.table_name} (valeur_fonciere);
-            CREATE INDEX idx_surface ON {self.table_name} (surface);
-            CREATE INDEX idx_date_modification_yyyymmdd ON {self.table_name} (date_modification_yyyymmdd);
-            CREATE INDEX idx_latitude ON {self.table_name} (latitude);
-            CREATE INDEX idx_longitude ON {self.table_name} (longitude);
-        END
-        """
-        return create_table_query, index_queries
+        # Configuration de l'authentification avec variables d'environnement
+        credentials_dict = {
+            "type": env_variables.get('TYPE'),
+            "project_id": env_variables.get('PROJECT_ID'),
+            "private_key_id": env_variables.get('PRIVATE_KEY_ID'),
+            "private_key": env_variables.get('PRIVATE_KEY').replace("/breakline/", "\n"),
+            "client_email": env_variables.get('CLIENT_EMAIL'),
+            "client_id": env_variables.get('CLIENT_ID'),
+            "auth_uri": env_variables.get('AUTH_URI'),
+            "token_uri": env_variables.get('TOKEN_URI'),
+            "auth_provider_x509_cert_url": env_variables.get('AUTH_PROVIDER_X509_CERT_URL'),
+            "client_x509_cert_url": env_variables.get('CLIENT_X509_CERT_URL'),
+            "universe_domain": env_variables.get('UNIVERSE_DOMAIN')
+        }
+
+        # Créer un fichier JSON temporaire pour stocker les credentials et les envoyer à BigQuery
+        credentials_path = 'temp_credentials.json'
+        with open(credentials_path, 'w') as credentials_file:
+            json.dump(credentials_dict, credentials_file)
+
+        # Utiliser le fichier JSON temporaire pour créer les credentials
+        credentials = service_account.Credentials.from_service_account_file(credentials_path)
+        self.client = bigquery.Client(credentials=credentials, project=self.project_id)
+
+        # Supprimer le fichier temporaire après utilisation
+        os.remove(credentials_path)
 
     def create_SQL_table(self):
-        """
-        Creates the SQL table and indexes based on the queries generated by create_SQL_query.
-        Implements logging for monitoring and debugging.
-        """
-        # Configure logging to file
-        logging.basicConfig(filename='data_upload.log', level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
+        # Code pour créer une table dans BigQuery avec un schéma complet
+        schema = [
+            bigquery.SchemaField("type_local", "STRING"),
+            bigquery.SchemaField("nombre_pieces", "INTEGER"),
+            bigquery.SchemaField("surface", "INTEGER"),
+            bigquery.SchemaField("code_postal", "STRING"),
+            bigquery.SchemaField("code_departement", "STRING"),
+            bigquery.SchemaField("ville", "STRING"),
+            bigquery.SchemaField("quartier", "STRING"),
+            bigquery.SchemaField("valeur_sqm", "STRING"),
+            bigquery.SchemaField("valeur_fonciere", "INTEGER"),
+            bigquery.SchemaField("date_publication", "STRING"),
+            bigquery.SchemaField("date_modification", "STRING"),
+            bigquery.SchemaField("date_publication_yyyymmdd", "STRING"),
+            bigquery.SchemaField("date_modification_yyyymmdd", "STRING"),
+            bigquery.SchemaField("reference", "STRING"),
+            bigquery.SchemaField("description", "STRING"),
+            bigquery.SchemaField("agence", "STRING"),
+            bigquery.SchemaField("latitude", "FLOAT"),
+            bigquery.SchemaField("longitude", "FLOAT")
+        ]
 
-        create_table_query, index_queries = self.create_SQL_query()
+        table_ref = self.client.dataset(self.dataset_id).table(self.table_id)
+        table = bigquery.Table(table_ref, schema=schema)
+        table = self.client.create_table(table, exists_ok=True)  # Crée la table si elle n'existe pas
 
-        try:
-            # Creating cursor from the connection object
-            cursor = self.conn.cursor()
+        print(f"Table {table.table_id} created successfully.")
 
-            # Creating the table if it doesn't exist
-            cursor.execute(create_table_query)
-            self.conn.commit()
-            print(f"Table {self.table_name} created successfully.")
-            logging.info(f"Table {self.table_name} created successfully.")
+    def send_to_db(self, dataframe):
+        '''
+        Note : there is no simple way to check for duplicates in BigQuery.
+        A request by line would be necessary and cost inefficient.
+        Might be better to do the request at loading time.
+        '''
 
-            # Creating indexes once the table is created
-            cursor.execute(index_queries)
-            self.conn.commit()
-            logging.info(f"Indexes for table {self.table_name} created successfully.")
-
-        except Exception as e:
-            logging.error(f"Error occurred: {e}")
-            print(e)
-            # Rollback in case of exception
-            if self.conn:
-                self.conn.rollback()
-
-        finally:
-            # Close the cursor and log the database connection closure
-            if self.conn:
-                cursor.close()
-                logging.info("Database connection closed.")
-
-    def connect_to_db(self):
-        """
-        Establishes a connection to the SQL database using credentials.
-        """
-        self.conn = pymssql.connect(self.server, self.uid, self.pwd, self.database)
-
-    def send_to_db(self, properties_list_of_dicts):
-        """
-        Sends a list of property dictionaries to the database.
-        Uses INSERT INTO ... SELECT statement to avoid inserting duplicates.
-        """
-        # Establishing the cursor for database operations
-        cursor = self.conn.cursor()
-
-        for prop in properties_list_of_dicts:
-            # Inserting each property into the database
-            cursor.execute(f'''
-            INSERT INTO {self.table_name} (type_local, nombre_pieces, surface, code_postal, code_departement, ville, quartier, valeur_sqm, valeur_fonciere, date_publication, date_modification, date_publication_yyyymmdd, date_modification_yyyymmdd, reference, description, agence, latitude, longitude)
-            SELECT %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-            WHERE NOT EXISTS (
-                SELECT 1 FROM {self.table_name}
-                WHERE type_local = %s AND surface = %s AND code_departement = %s AND valeur_fonciere = %s
-            )
-            ''', (
-                str(prop['type_local']),
-                int(prop['nombre_pieces']),
-                int(prop['surface']),
-                str(prop['code_postal']),
-                str(prop['code_departement']),
-                str(prop['ville']),
-                str(prop['quartier']),
-                str(prop['valeur_sqm']),
-                float(prop['valeur_fonciere']),
-                str(prop['date_publication']),
-                str(prop['date_modification']),
-                str(prop['date_publication_yyyymmdd']),
-                str(prop['date_modification_yyyymmdd']),
-                str(prop['reference']),
-                str(prop['description']),
-                str(prop['agence']),
-                float(prop['latitude']),
-                float(prop['longitude']),
-                # Parameters for WHERE NOT EXISTS clause
-                str(prop['type_local']),
-                int(prop['surface']),
-                str(prop['code_departement']),
-                float(prop['valeur_fonciere'])
-            ))
-            self.conn.commit()
-
-        # Closing the cursor after operation
-        cursor.close()
-
-    def disconnect_from_db(self):
-        self.conn.close()
+        # Code pour envoyer des données à BigQuery
+        table_id = f"{self.project_id}.{self.dataset_id}.{self.table_id}"
+        job = self.client.load_table_from_dataframe(dataframe, table_id)
+        job.result()  # Attend la fin du job
+        print("Data sent to BigQuery successfully.")
