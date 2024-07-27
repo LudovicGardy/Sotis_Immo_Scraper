@@ -22,7 +22,7 @@ def load_configurations():
 def user_config():
 
     user_config_dict = {
-        "date_to_reach": "2023-11-28", # "yyyy-mm-dd"
+        "date_to_reach": "2023-11-01", # "yyyy-mm-dd"
         "start_department": 1 # from 1 to 95
     }
 
@@ -35,7 +35,7 @@ def scraper_config():
         "html_element_of_interest": 'sideListItem', #'article.sideListItem'
         "nextpage_button_class_name": "goForward",
         "cookies_button_name": "didomi-notice-agree-button",
-        "max_pages": 2
+        "max_pages": 100 # max 100
     }
 
     return scraper_config_dict

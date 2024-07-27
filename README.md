@@ -1,26 +1,47 @@
+# Interactive Analysis of the French Real Estate Park Over Time
 
-# SotisImmo_ETL: Real Estate Data Extraction Tool
+## 📄 Description
 
-## Overview
-SotisImmo_ETL is designed for scraping and processing real estate data. It offers functionality to extract data from various online sources, clean and normalize the data, and store it in a SQL database.
+⚙️ This tool was designed for scraping and processing real estate data in order to provide very recent updates to the Sotis Immo Web App. It offers functionality to extract data from various online sources, clean and normalize the data, and store it in a SQL database.
+
+👉 Access the app and start your exploration now at [https://immo.sotisanalytics.com](https://immo.sotisanalytics.com).
+
+| ![Image1](images/image1.jpeg) | ![Image2](images/image2.png) |
+|:---------------------:|:---------------------:|
+|Pipeline|Application|
 
 ## Prerequisites
 - Anaconda or Miniconda
 - Docker (for Docker deployment)
 
-## Installation and Setup
+## ⚒️ Installation
+
+### Prerequisites
+- Python 3.11
+- Python libraries
+    ```sh
+    pip install -r requirements.txt
+    ```
+
+## 📝 Usage
 
 ### Running without Docker
 
-1. **Clone the Repository and Navigate to Directory**
+1. **Clone the repository and navigate to directory**
     ```bash
-    cd [your-folder-path]/SotisImmo_ETL
+    git pull https://github.com/LudovicGardy/app_sotisimmo
+    cd sotisimmo_repos/app_folder
     ```
 
-2. **Environment Setup**
-    - Activate the Conda environment:
+2. **Environment setup**
+    - Create and/or activate the virtual environment:
         ```bash
+        conda create -n myenv python=3.11
         conda activate myenv
+        ```
+        or
+        ```bash
+        source .venv/bin/activate
         ```
 
 3. **Start the ETL Process**
@@ -43,20 +64,28 @@ SotisImmo_ETL is designed for scraping and processing real estate data. It offer
 
 ### Running with Docker
 
-1. **Prepare Docker Environment**
+1. **Prepare Docker environment**
     - Ensure Docker is installed and running on your system.
 
-2. **Navigate to Project Directory**
-    ```bash
-    cd [your-folder-path]/SotisImmo_ETL
-    ```
+2. **Navigate to project directory**
+    - For multiple containers:
+        ```bash
+        cd [path-to-app-folder-containing-docker-compose.yml]
+        ```
+    - For a single container:
+        ```bash
+        cd [path-to-app-folder-containing-Dockerfile]
+        ```
 
-3. **Build and Start the Container**
+3. **Build and start the containers**
     ```bash
     docker-compose up --build
     ```
 
-    - Note: If you encounter issues with `pymssql`, adjust its version in `requirements.txt` or remove it before building the Docker image.
+    - The application will be accessible at `localhost:8501`.
 
-## Additional Notes
-- Modify `requirements.txt` as needed for compatibility with your environment.
+    - ⚠️ If you encounter issues with `pymssql`, adjust its version in `requirements.txt` or remove it before building the Docker image.
+
+## 👤 Author
+- LinkedIn: [Ludovic Gardy](https://www.linkedin.com/in/ludovic-gardy/)
+- Website: [https://www.sotisanalytics.com](https://www.sotisanalytics.com)

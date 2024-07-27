@@ -25,6 +25,7 @@ _archives/
 modules_azure/
 notebooks/
 env/
+dpt/
 pipeline.md
 notes.md
 drivers/
