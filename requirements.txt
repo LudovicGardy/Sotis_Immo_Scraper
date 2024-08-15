@@ -5,6 +5,5 @@ xlrd
 selenium
 tqdm
 openpyxl
-
 pymssql
 google-cloud-bigquery
